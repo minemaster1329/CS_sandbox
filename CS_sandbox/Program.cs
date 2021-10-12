@@ -6,73 +6,60 @@ using System.Drawing;
 
 namespace CS_sandbox
 {
-    struct image_channels
+    public struct Image_channels
     {
-        int width;
-        int height;
-        double[,] red_channel;
-        double[,] green_channel;
-        double[,] blue_channel;
+        public int width;
+        public int height;
+        public double[,] red_channel;
+        public double[,] green_channel;
+        public double[,] blue_channel;
     }
     class Program
     {
         static void Main(string[] args)
         {
-            const int radius = 1;
+            const int radius = 3;
             Bitmap bmp = new Bitmap("bitmap_sample2.jpg");
             bmp.Save("bitmap_sample2.png", ImageFormat.Png);
             Bitmap bitmap = new Bitmap("bitmap_sample2.png");
-            //Bitmap bitmap = new Bitmap("pnggrad16rgb.png");
+            //Bitmap bitmap = new Bitmap("Vaporwave_art_example.png");
 
-            var (bitmap_red, bitmap_green, bitmap_blue) = GetDoubleArrayOfChannels(bitmap, radius);
+            const double sigma = 10.0;
+            var (gaussian_weights, sum_of_gaussian_weights) = CalculateGaussianWeights(radius, sigma);
 
-            const double sigma = 3;
-            var (gaussian_weights, sum_of_gaussian_weights) = CalculateGaussianWeights(1, sigma);
+            Image_channels ic = GetImageRGBChannelsValues(bitmap, radius);
 
             double average_red = 0.0;
             double average_green = 0.0;
             double average_blue = 0.0;
 
-            Console.WriteLine(bitmap_red[100, 100]);
-
-            for (int i = 1; i < bitmap.Width - 1; i++)
+            for (int i = radius; i < ic.width - radius; i++)
             {
-                for (int j = 1; j < bitmap.Height - 1; j++)
+                for (int j = radius; j < ic.height - radius; j++)
                 {
                     average_blue = average_green = average_red = 0.0;
-                    for (int a = -1; a < 2; a++)
+                    for (int a = -radius; a <= radius; a++)
                     {
-                        for (int b = -1; b < 2; b++)
+                        for (int b = -radius; b <= radius; b++)
                         {
-                            average_red += bitmap_red[i + a, j + b] * gaussian_weights[a + 1, b + 1];
-                            average_blue += bitmap_blue[i + a, j + b] * gaussian_weights[a + 1, b + 1];
-                            average_green += bitmap_green[i + a, j + b] * gaussian_weights[a + 1, b + 1];
+                            average_red += ic.red_channel[i + a, j + b] * gaussian_weights[a + radius, b + radius];
+                            average_blue += ic.blue_channel[i + a, j + b] * gaussian_weights[a + radius, b + radius];
+                            average_green += ic.green_channel[i + a, j + b] * gaussian_weights[a + radius, b + radius];
                         }
                     }
                     average_red /= sum_of_gaussian_weights;
                     average_green /= sum_of_gaussian_weights;
                     average_blue /= sum_of_gaussian_weights;
 
-                    bitmap_blue[i, j] = Math.Floor(average_blue);
-                    bitmap_green[i, j] = Math.Floor(average_green);
-                    bitmap_red[i, j] = Math.Floor(average_red);
+                    ic.blue_channel[i, j] = Math.Floor(average_blue);
+                    ic.green_channel[i, j] = Math.Floor(average_green);
+                    ic.red_channel[i, j] = Math.Floor(average_red);
                 }
             }
 
-            Console.WriteLine(bitmap_red[100, 100]);
+            GenerateAndSaveImage(bitmap, ic, radius, "image_copy.png");
 
-            Color cl = Color.White;
-
-            for (int i = 0; i < bitmap.Width; i++)
-            {
-                for (int j = 0; j < bitmap.Height; j++)
-                {
-                    cl = Color.FromArgb(bitmap.GetPixel(i, j).A, (byte)bitmap_red[i, j], (byte)bitmap_green[i, j], (byte)bitmap_blue[i, j]);
-                    bitmap.SetPixel(i, j, cl);
-                }
-            }
-
-            bitmap.Save("bitmap_copy.png", ImageFormat.Png);
+            
             Console.ReadKey();
         }
 
@@ -98,32 +85,76 @@ namespace CS_sandbox
             return (weights_matrix, sum_of_weights);
         }
 
-        static (double[,], double[,], double[,]) GetDoubleArrayOfChannels(Bitmap bitmap, int radius)
+        static void GenerateAndSaveImage(Bitmap bitmap, Image_channels ic, int radius, string file_name)
         {
-            double[,] bitmap_red = new double[bitmap.Width, bitmap.Height];
-            double[,] bitmap_green = new double[bitmap.Width, bitmap.Height];
-            double[,] bitmap_blue = new double[bitmap.Width, bitmap.Height];
-
             Color cl = Color.White;
 
-            for (int i = 0; i < bitmap.Width; i++)
+            for (int i = radius; i < bitmap.Width + radius; i++)
             {
-                for (int j = 0; j < bitmap.Height; j++)
+                for (int j = radius; j < bitmap.Height + radius; j++)
                 {
-                    cl = bitmap.GetPixel(i, j);
-
-                    bitmap_red[i, j] = cl.R;
-                    bitmap_green[i, j] = cl.G;
-                    bitmap_blue[i, j] = cl.B;
+                    cl = Color.FromArgb(bitmap.GetPixel(i - radius, j - radius).A,
+                        (byte)ic.red_channel[i, j],
+                        (byte)ic.green_channel[i, j],
+                        (byte)ic.blue_channel[i, j]);
+                    bitmap.SetPixel(i - radius, j - radius, cl);
                 }
             }
 
-            return (bitmap_red, bitmap_blue, bitmap_green);
+            bitmap.Save(file_name, ImageFormat.Png);
         }
 
-        static void GenerateAndSaveImage(Bitmap bmp, image_channels image_channels)
+        static Image_channels GetImageRGBChannelsValues(Bitmap bmp, int radius)
         {
+            Image_channels output;
 
+            output.width = bmp.Width + (2 * radius);
+            output.height = bmp.Height + (2 * radius);
+            output.blue_channel = new double[output.width, output.height];
+            output.red_channel = new double[output.width, output.height];
+            output.green_channel = new double[output.width, output.height];
+
+            Color temp = Color.White;
+
+            for (int i = radius; i < output.width - radius; i++)
+            {
+                for (int j = radius; j < output.height - radius; j++)
+                {
+                    temp = bmp.GetPixel(i - radius, j - radius);
+                    output.blue_channel[i, j] = temp.B;
+                    output.red_channel[i, j] = temp.R;
+                    output.green_channel[i, j] = temp.G;
+                }
+            }
+
+            for (int i = radius; i < output.width - radius; i++)
+            {
+                for (int j = 0; j < radius; j++)
+                {
+                    output.blue_channel[i, j] = output.blue_channel[i, radius];
+                    output.red_channel[i, j] = output.red_channel[i, radius];
+                    output.green_channel[i, j] = output.green_channel[i, radius];
+
+                    output.blue_channel[i, output.height - j - 1] = output.blue_channel[i, output.height - radius];
+                    output.red_channel[i, output.height - j - 1] = output.red_channel[i, output.height - radius];
+                    output.green_channel[i, output.height - j - 1] = output.green_channel[i, output.height - radius];
+                }
+            }
+
+            for (int i = 0; i < output.height; i++)
+            {
+                for (int j = 0; j < radius; j++)
+                {
+                    output.blue_channel[j, i] = output.blue_channel[radius, i];
+                    output.red_channel[j, i] = output.red_channel[radius, i];
+                    output.green_channel[j, i] = output.green_channel[radius, i];
+
+                    output.blue_channel[output.width - j - 1,i] = output.blue_channel[output.width - radius, i];
+                    output.red_channel[output.width - j - 1, i] = output.red_channel[output.width - radius, i];
+                    output.green_channel[output.width - j - 1, i] = output.green_channel[output.width - radius, i];
+                }
+            }
+            return output;
         }
     }
 }

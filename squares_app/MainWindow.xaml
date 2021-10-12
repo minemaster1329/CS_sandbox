@@ -1,0 +1,31 @@
+﻿<Window x:Class="squares_app.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:squares_app"
+        mc:Ignorable="d"
+        Title="Squares Playground" Height="500" Width="1000">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Column="1" Grid.RowSpan="6" Margin="5"  Name="MainGrid">
+
+        </Grid>
+        <Label Content="Enter rows count" Margin="10,10,10,0"/>
+        <Label Content="Enter columns count" Margin="10,10,10,0" Grid.Row="2"/>
+        <TextBox Margin="10" Grid.Row="1" TextWrapping="Wrap" Text="2" Name="RowsCount"/>
+        <TextBox Margin="10" Grid.Row="3" TextWrapping="Wrap" Text="2" Name="ColsCount"/>
+        <Button Content="Resize grid" Margin="10" Grid.Row="4" Click="Button_Click"/>
+    </Grid>
+</Window>
